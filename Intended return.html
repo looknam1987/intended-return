@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบแปลงข้อมูลคืนสินค้าเป็น Excel (Logistics Return Generator)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Sarabun & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- ExcelJS & FileSaver for Styling Excel Files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Sarabun', 'Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; }
+        .excel-table-preview th, .excel-table-preview td {
+            border: 1px solid #94a3b8;
+            padding: 6px 10px;
+            font-size: 0.875rem;
+            white-space: nowrap;
+        }
+        .bg-header-blue { background-color: #dce6f1; }
+        .bg-header-orange { background-color: #fce4d6; }
+        .bg-sec-green { background-color: #c6efce; color: #276a3c; }
+        .bg-sec-yellow { background-color: #fff2cc; color: #7f6000; }
+        .bg-sec-pink { background-color: #fce4d6; color: #a61c1c; }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen pb-12">
+
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-sky-500 p-2.5 rounded-xl text-white shadow-lg">
+                    <i class="fa-solid fa-file-excel text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">Logistics Return Excel Generator</h1>
+                    <p class="text-xs text-slate-400">แปลงข้อความคืนสินค้า แปลงฟอร์แมตเบอร์โทร และออกไฟล์ Excel อัตโนมัติ</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    พร้อมใช้งาน
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Panel: Input & Config (5 Cols) -->
+        <div class="lg:col-span-5 space-y-6">
+            
+            <!-- Paste Raw Text Card -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-base font-semibold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-paste text-sky-600"></i> วางข้อความดิบ (Raw Text)
+                    </h2>
+                    <button id="btnSample" type="button" class="text-xs text-sky-600 hover:text-sky-800 hover:underline flex items-center gap-1 font-medium">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> ใส่ตัวอย่าง
+                    </button>
+                </div>
+
+                <textarea id="rawText" rows="9" 
+                    class="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-sm font-mono text-slate-700 bg-slate-50/50 leading-relaxed transition resize-none"
+                    placeholder="วางข้อความที่นี่ เช่น:&#10;REF: 252301044&#10;Tracking: SOKO2609-108-03754&#10;DATE: 08/Sep/2026&#10;ชื่อ: 'วนิดา&#10;โทร: 66819132102&#10;ที่อยู่: '18/250 หมู่บ้านเพอร์เฟค ซอยอ่อนนุช 80 แขวงประเวศ เขตประเวศ กรุงเทพมหานคร 10250&#10;สินค้า: PRM018 (3 BOX.)"></textarea>
+
+                <div class="mt-4 flex gap-2">
+                    <button id="btnExtract" type="button" 
+                        class="flex-1 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-medium py-2.5 px-4 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-gears"></i> แปลงข้อมูล
+                    </button>
+                    <button id="btnClear" type="button" 
+                        class="px-3 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-600 rounded-xl text-sm transition">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Header & Config Settings -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <h2 class="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-slate-600"></i> ตั้งค่าส่วนหัว & ที่อยู่คงที่ (Header & Company)
+                </h2>
+
+                <div class="space-y-3 text-xs">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-medium text-slate-600 mb-1">EKP no.</label>
+                            <input type="text" id="cfgEKP" value="5280551024" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block font-medium text-slate-600 mb-1">Pick up no.</label>
+                            <input type="text" id="cfgPickupNo" value="0005376582" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-100">
+                        <label class="block font-medium text-slate-600 mb-1">ชื่อบริษัท (ส่งกลับ/ส่งคืน)</label>
+                        <input type="text" id="cfgCompName" value="Smart One Logistics" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                    </div>
+
+                    <div>
+                        <label class="block font-medium text-slate-600 mb-1">ที่อยู่บริษัท</label>
+                        <input type="text" id="cfgCompAddr" value="อาคารอโยธยา ทาวเวอร์ ชั้น19  240/37 ถนนรัชดาภิเษก แขวงห้วยขวาง เขตห้วยขวาง กรุงเทพมหานคร" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-medium text-slate-600 mb-1">รหัสไปรษณีย์</label>
+                            <input type="text" id="cfgCompZip" value="10310" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block font-medium text-slate-600 mb-1">เบอร์โทรศัพท์</label>
+                            <input type="text" id="cfgCompPhone" value="0908903055" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Panel: Data Verification & Export (7 Cols) -->
+        <div class="lg:col-span-7 space-y-6">
+
+            <!-- Data Verification Form -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+                    <div>
+                        <h2 class="text-base font-semibold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-emerald-600"></i> ตรวจสอบข้อมูลที่สกัดได้
+                        </h2>
+                        <p class="text-xs text-slate-500">แก้ไขข้อมูลด้านล่างได้หากต้องการก่อนดาวน์โหลด</p>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button id="btnAutoDate" type="button" class="px-2.5 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition font-medium">
+                            <i class="fa-solid fa-calendar-day text-sky-600"></i> ตั้งใส่วันพรุ่งนี้ (วันทำการ)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-4 text-sm">
+                    <!-- Date & Tracking Row -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">วันที่เข้ารับ (M/D/YYYY)</label>
+                            <input type="text" id="outDate" class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 font-medium text-slate-800 bg-emerald-50/40">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Tracking Number ใหม่ (Shipment ID)</label>
+                            <input type="text" id="outTracking" class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 font-mono font-medium text-sky-800 bg-sky-50/40">
+                        </div>
+                    </div>
+
+                    <!-- Name & Phone -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">ชื่อลูกค้า (รวมเครื่องหมายคำพูดถ้ามี)</label>
+                            <input type="text" id="outName" class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">เบอร์โทรศัพท์ (แปลง 66 เป็น '0)</label>
+                            <input type="text" id="outPhone" class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 font-mono">
+                        </div>
+                    </div>
+
+                    <!-- Address & Zipcode -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">ที่อยู่ลูกค้าเข้ารับ</label>
+                        <textarea id="outAddr" rows="2" class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 text-xs leading-relaxed resize-none"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">รหัสไปรษณีย์ (ดึง 5 หลักท้าย)</label>
+                            <input type="text" id="outZip" class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">หมายเหตุเพิ่มเติม (สินค้า/REF)</label>
+                            <input type="text" id="outNote" class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Export Action Buttons -->
+                <div class="mt-6 pt-4 border-t border-slate-100 flex flex-wrap gap-3">
+                    <button id="btnExportExcel" type="button" 
+                        class="flex-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-medium py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-excel text-lg"></i> ดาวน์โหลดไฟล์ Excel (.xlsx)
+                    </button>
+                    <button id="btnCopyTable" type="button" 
+                        class="bg-slate-800 hover:bg-slate-900 text-white font-medium py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-copy"></i> ก็อปปี้ตาราง
+                    </button>
+                </div>
+                <p id="toastMsg" class="hidden mt-2 text-xs text-center font-medium text-emerald-600 transition-all"></p>
+            </div>
+
+            <!-- Live Preview Card -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <h2 class="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-eye text-indigo-600"></i> ตัวอย่างไฟล์ Excel ที่จะได้ (Live Excel Preview)
+                </h2>
+
+                <div class="overflow-x-auto rounded-lg border border-slate-200">
+                    <table id="previewTable" class="excel-table-preview min-w-full text-slate-700">
+                        <tbody>
+                            <!-- Row 1: Header Top -->
+                            <tr>
+                                <td class="bg-header-blue font-bold" colspan="2">Intended Return (Pickup)</td>
+                                <td colspan="13" class="bg-slate-50"></td>
+                            </tr>
+                            <tr>
+                                <td class="bg-header-orange font-medium" colspan="2" id="pvEKP">EKP no. : 5280551024</td>
+                                <td colspan="13" class="bg-slate-50"></td>
+                            </tr>
+                            <tr>
+                                <td class="bg-header-orange font-medium" colspan="2" id="pvPickup">Pick up no. : 0005376582</td>
+                                <td colspan="13" class="bg-slate-50"></td>
+                            </tr>
+                            <tr><td colspan="15" class="h-2 bg-slate-50 p-0 border-none"></td></tr>
+
+                            <!-- Section Headers -->
+                            <tr class="font-bold text-center">
+                                <th class="bg-sec-green" rowspan="2">วันที่เข้ารับ</th>
+                                <th class="bg-sec-green" rowspan="2">Shipment ID<br><span class="font-normal text-xs">(Tracking Number ใหม่)</span></th>
+                                <th class="bg-sec-green" colspan="5">รายละเอียดที่อยู่สำหรับเข้ารับสินค้า</th>
+                                <th class="bg-sec-yellow" colspan="4">รายละเอียดสำหรับที่อยู่นำส่ง</th>
+                                <th class="bg-sec-pink" colspan="4">รายละเอียดสำหรับที่อยู่ส่งคืน</th>
+                            </tr>
+                            <tr class="font-semibold text-xs text-center">
+                                <!-- Pickup -->
+                                <th class="bg-sec-green">ชื่อ</th>
+                                <th class="bg-sec-green">ที่อยู่</th>
+                                <th class="bg-sec-green">รหัสไปรษณีย์</th>
+                                <th class="bg-sec-green">เบอร์โทรศัพท์</th>
+                                <th class="bg-sec-green">หมายเหตุเพิ่มเติม</th>
+                                <!-- Delivery -->
+                                <th class="bg-sec-yellow">ชื่อ</th>
+                                <th class="bg-sec-yellow">ที่อยู่</th>
+                                <th class="bg-sec-yellow">รหัสไปรษณีย์</th>
+                                <th class="bg-sec-yellow">เบอร์โทรศัพท์</th>
+                                <!-- Return -->
+                                <th class="bg-sec-pink">ชื่อ</th>
+                                <th class="bg-sec-pink">ที่อยู่</th>
+                                <th class="bg-sec-pink">รหัสไปรษณีย์</th>
+                                <th class="bg-sec-pink">เบอร์โทรศัพท์</th>
+                            </tr>
+
+                            <!-- Data Row -->
+                            <tr id="pvDataRow" class="text-sm">
+                                <td id="pvDate" class="text-center font-bold">9/23/2026</td>
+                                <td id="pvTracking" class="font-mono">THFHQSOKO2609-108-03754RT</td>
+                                <td id="pvName">ชื่อ: 'วนิดา</td>
+                                <td id="pvAddr" class="max-w-xs truncate">ที่อยู่: '18/250 หมู่บ้านเพอร์เฟค...</td>
+                                <td id="pvZip" class="text-center font-mono">10250</td>
+                                <td id="pvPhone" class="text-center font-mono">0819132102</td>
+                                <td id="pvNote"></td>
+                                <!-- Delivery (Static) -->
+                                <td id="pvDName">Smart One Logistics</td>
+                                <td id="pvDAddr" class="max-w-xs truncate">อาคารอโยธยา ทาวเวอร์...</td>
+                                <td id="pvDZip" class="text-center font-mono">10310</td>
+                                <td id="pvDPhone" class="text-center font-mono">0908903055</td>
+                                <!-- Return (Static) -->
+                                <td id="pvRName">Smart One Logistics</td>
+                                <td id="pvRAddr" class="max-w-xs truncate">อาคารอโยธยา ทาวเวอร์...</td>
+                                <td id="pvRZip" class="text-center font-mono">10310</td>
+                                <td id="pvRPhone" class="text-center font-mono">0908903055</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        // Default Sample Data
+        const SAMPLE_TEXT = `REF: 252301044
+Tracking: SOKO2609-108-03754
+DATE: 08/Sep/2026
+ชื่อ: 'วนิดา
+โทร: 66819132102
+ที่อยู่: '18/250 หมู่บ้านเพอร์เฟค ซอยอ่อนนุช 80 แขวงประเวศ เขตประเวศ กรุงเทพมหานคร 10250
+สินค้า: PRM018 (3 BOX.)`;
+
+        // DOM Elements
+        const rawText = document.getElementById('rawText');
+        const btnExtract = document.getElementById('btnExtract');
+        const btnSample = document.getElementById('btnSample');
+        const btnClear = document.getElementById('btnClear');
+        const btnAutoDate = document.getElementById('btnAutoDate');
+        const btnExportExcel = document.getElementById('btnExportExcel');
+        const btnCopyTable = document.getElementById('btnCopyTable');
+        const toastMsg = document.getElementById('toastMsg');
+
+        // Form Outputs
+        const outDate = document.getElementById('outDate');
+        const outTracking = document.getElementById('outTracking');
+        const outName = document.getElementById('outName');
+        const outPhone = document.getElementById('outPhone');
+        const outAddr = document.getElementById('outAddr');
+        const outZip = document.getElementById('outZip');
+        const outNote = document.getElementById('outNote');
+
+        // Config Elements
+        const cfgEKP = document.getElementById('cfgEKP');
+        const cfgPickupNo = document.getElementById('cfgPickupNo');
+        const cfgCompName = document.getElementById('cfgCompName');
+        const cfgCompAddr = document.getElementById('cfgCompAddr');
+        const cfgCompZip = document.getElementById('cfgCompZip');
+        const cfgCompPhone = document.getElementById('cfgCompPhone');
+
+        // Helper: Format Date M/D/YYYY
+        function formatToMDYYYY(dateObj) {
+            const m = dateObj.getMonth() + 1;
+            const d = dateObj.getDate();
+            const y = dateObj.getFullYear();
+            return `${m}/${d}/${y}`;
+        }
+
+        // Calculate next workday date
+        function getNextWorkday() {
+            let date = new Date();
+            date.setDate(date.getDate() + 1);
+            if (date.getDay() === 6) date.setDate(date.getDate() + 2);
+            else if (date.getDay() === 0) date.setDate(date.getDate() + 1);
+            return formatToMDYYYY(date);
+        }
+
+        // Parse Raw Text Logic
+        function parseLogisticsText(text) {
+            if (!text || !text.trim()) return;
+
+            const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+            
+            let ref = '';
+            let tracking = '';
+            let rawDate = '';
+            let name = '';
+            let phone = '';
+            let addr = '';
+            let product = '';
+
+            lines.forEach(line => {
+                if (/^REF\s*:/i.test(line)) ref = line.replace(/^REF\s*:/i, '').trim();
+                else if (/^Tracking\s*:/i.test(line)) tracking = line.replace(/^Tracking\s*:/i, '').trim();
+                else if (/^DATE\s*:/i.test(line)) rawDate = line.replace(/^DATE\s*:/i, '').trim();
+                else if (/^ชื่อ\s*:/i.test(line)) name = line.replace(/^ชื่อ\s*:/i, '').trim();
+                else if (/^โทร\s*:/i.test(line)) phone = line.replace(/^โทร\s*:/i, '').trim();
+                else if (/^ที่อยู่\s*:/i.test(line)) addr = line.replace(/^ที่อยู่\s*:/i, '').trim();
+                else if (/^สินค้า\s*:/i.test(line)) product = line.replace(/^สินค้า\s*:/i, '').trim();
+            });
+
+            const formattedTracking = tracking ? `THFHQ${tracking}RT` : '';
+
+            let formattedPhone = phone;
+            if (formattedPhone.startsWith('66')) {
+                formattedPhone = '0' + formattedPhone.slice(2);
+            }
+
+            let zipCode = '';
+            const zipMatch = addr.match(/\b\d{5}\b/);
+            if (zipMatch) zipCode = zipMatch[0];
+
+            let formattedName = name ? `ชื่อ: ${name}` : '';
+            let formattedAddr = addr ? `ที่อยู่: ${addr}` : '';
+
+            outDate.value = getNextWorkday();
+            outTracking.value = formattedTracking;
+            outName.value = formattedName;
+            outPhone.value = formattedPhone;
+            outAddr.value = formattedAddr;
+            outZip.value = zipCode;
+            outNote.value = product ? `${product}` : '';
+
+            updateLivePreview();
+        }
+
+        // Update Preview Table
+        function updateLivePreview() {
+            document.getElementById('pvEKP').innerText = `EKP no. : ${cfgEKP.value}`;
+            document.getElementById('pvPickup').innerText = `Pick up no. : ${cfgPickupNo.value}`;
+
+            document.getElementById('pvDate').innerText = outDate.value;
+            document.getElementById('pvTracking').innerText = outTracking.value;
+            document.getElementById('pvName').innerText = outName.value;
+            document.getElementById('pvAddr').innerText = outAddr.value;
+            document.getElementById('pvZip').innerText = outZip.value;
+            document.getElementById('pvPhone').innerText = outPhone.value;
+            document.getElementById('pvNote').innerText = outNote.value;
+
+            document.getElementById('pvDName').innerText = cfgCompName.value;
+            document.getElementById('pvDAddr').innerText = cfgCompAddr.value;
+            document.getElementById('pvDZip').innerText = cfgCompZip.value;
+            document.getElementById('pvDPhone').innerText = cfgCompPhone.value;
+
+            document.getElementById('pvRName').innerText = cfgCompName.value;
+            document.getElementById('pvRAddr').innerText = cfgCompAddr.value;
+            document.getElementById('pvRZip').innerText = cfgCompZip.value;
+            document.getElementById('pvRPhone').innerText = cfgCompPhone.value;
+        }
+
+        // Advanced Styled Excel Generation with Gridlines & Solid Borders
+        async function exportToExcel() {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Form S1 SMG', {
+                views: [{ showGridLines: true }] // Force enable Excel Gridlines
+            });
+
+            // Columns Setup
+            worksheet.columns = [
+                { width: 15 }, // A: Date
+                { width: 32 }, // B: Tracking
+                { width: 22 }, // C: Name
+                { width: 65 }, // D: Address
+                { width: 14 }, // E: Zip
+                { width: 16 }, // F: Phone
+                { width: 22 }, // G: Note
+                { width: 22 }, // H: Delivery Name
+                { width: 65 }, // I: Delivery Addr
+                { width: 14 }, // J: Delivery Zip
+                { width: 16 }, // K: Delivery Phone
+                { width: 22 }, // L: Return Name
+                { width: 65 }, // M: Return Addr
+                { width: 14 }, // N: Return Zip
+                { width: 16 }  // O: Return Phone
+            ];
+
+            // Solid Dark Border Style for Tables
+            const solidBorder = {
+                top: { style: 'thin', color: { argb: 'FF555555' } },
+                left: { style: 'thin', color: { argb: 'FF555555' } },
+                bottom: { style: 'thin', color: { argb: 'FF555555' } },
+                right: { style: 'thin', color: { argb: 'FF555555' } }
+            };
+
+            // Row 1: Header Top
+            worksheet.mergeCells('A1:B1');
+            const cellA1 = worksheet.getCell('A1');
+            cellA1.value = 'Intended Return (Pickup)';
+            cellA1.font = { name: 'Sarabun', bold: true, size: 11 };
+            cellA1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
+
+            // Row 2: EKP
+            worksheet.mergeCells('A2:B2');
+            const cellA2 = worksheet.getCell('A2');
+            cellA2.value = `EKP no. : ${cfgEKP.value}`;
+            cellA2.font = { name: 'Sarabun', size: 10 };
+            cellA2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE4D6' } };
+
+            // Row 3: Pickup
+            worksheet.mergeCells('A3:B3');
+            const cellA3 = worksheet.getCell('A3');
+            cellA3.value = `Pick up no. : ${cfgPickupNo.value}`;
+            cellA3.font = { name: 'Sarabun', size: 10 };
+            cellA3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE4D6' } };
+
+            // Row 5 & 6: Main Headers
+            worksheet.mergeCells('A5:A6');
+            worksheet.getCell('A5').value = 'วันที่เข้ารับ';
+
+            worksheet.mergeCells('B5:B6');
+            worksheet.getCell('B5').value = 'Shipment ID\n(Tracking Number ใหม่)';
+
+            worksheet.mergeCells('C5:G5');
+            worksheet.getCell('C5').value = 'รายละเอียดที่อยู่สำหรับเข้ารับสินค้า';
+
+            worksheet.mergeCells('H5:K5');
+            worksheet.getCell('H5').value = 'รายละเอียดสำหรับที่อยู่นำส่ง';
+
+            worksheet.mergeCells('L5:O5');
+            worksheet.getCell('L5').value = 'รายละเอียดสำหรับที่อยู่ส่งคืน';
+
+            // Subheaders Row 6
+            const subHeaders = [
+                'ชื่อ', 'ที่อยู่', 'รหัสไปรษณีย์', 'เบอร์โทรศัพท์', 'หมายเหตุเพิ่มเติม',
+                'ชื่อ', 'ที่อยู่', 'รหัสไปรษณีย์', 'เบอร์โทรศัพท์',
+                'ชื่อ', 'ที่อยู่', 'รหัสไปรษณีย์', 'เบอร์โทรศัพท์'
+            ];
+            subHeaders.forEach((sh, idx) => {
+                worksheet.getCell(6, idx + 3).value = sh;
+            });
+
+            // Color Headers Function
+            const setHeaderStyle = (cellRef, bgColor, textColor = 'FF000000') => {
+                const cell = worksheet.getCell(cellRef);
+                cell.font = { name: 'Sarabun', bold: true, size: 10, color: { argb: textColor } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+                cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+            };
+
+            // Apply Green Header Group
+            ['A5', 'B5', 'C5', 'C6', 'D6', 'E6', 'F6', 'G6'].forEach(ref => setHeaderStyle(ref, 'FFC6EFCE', 'FF276A3C'));
+            // Apply Yellow Header Group
+            ['H5', 'H6', 'I6', 'J6', 'K6'].forEach(ref => setHeaderStyle(ref, 'FFFFA61C', 'FF7F6000'));
+            // Apply Pink Header Group
+            ['L5', 'L6', 'M6', 'N6', 'O6'].forEach(ref => setHeaderStyle(ref, 'FFFCE4D6', 'FFA61C1C'));
+
+            // Data Row 7
+            const dataRowValues = [
+                outDate.value,
+                outTracking.value,
+                outName.value,
+                outAddr.value,
+                outZip.value,
+                outPhone.value,
+                outNote.value,
+                cfgCompName.value,
+                cfgCompAddr.value,
+                cfgCompZip.value,
+                cfgCompPhone.value,
+                cfgCompName.value,
+                cfgCompAddr.value,
+                cfgCompZip.value,
+                cfgCompPhone.value
+            ];
+
+            const row7 = worksheet.getRow(7);
+            dataRowValues.forEach((val, idx) => {
+                const cell = row7.getCell(idx + 1);
+                cell.value = val;
+                cell.font = { name: 'Sarabun', size: 10 };
+                cell.alignment = { vertical: 'middle', wrapText: true };
+                
+                if ([1, 2, 5, 6, 10, 11, 14, 15].includes(idx + 1)) {
+                    cell.alignment.horizontal = 'center';
+                }
+            });
+
+            // Set Solid Borders for ALL Cells in Header Top (Rows 1-3, Cols 1-2)
+            for (let r = 1; r <= 3; r++) {
+                for (let c = 1; c <= 2; c++) {
+                    worksheet.getCell(r, c).border = solidBorder;
+                }
+            }
+
+            // Set Solid Borders for Main Data Table Area (Rows 5-7, Cols 1-15)
+            for (let r = 5; r <= 7; r++) {
+                for (let c = 1; c <= 15; c++) {
+                    worksheet.getCell(r, c).border = solidBorder;
+                }
+            }
+
+            // Export to File
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            saveAs(blob, `Form_S1_Return_${new Date().toISOString().slice(0,10)}.xlsx`);
+
+            showToast('ดาวน์โหลดไฟล์ Excel พร้อมเส้นตารางและสีสมบูรณ์แล้ว!');
+        }
+
+        // Copy Table HTML directly to clipboard
+        function copyPreviewTable() {
+            const table = document.getElementById('previewTable');
+            const range = document.createRange();
+            range.selectNode(table);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+
+            try {
+                document.execCommand('copy');
+                showToast('คัดลอกตารางแล้ว! สามารถกด Ctrl+V วางใน Excel ได้ทันที');
+            } catch (err) {
+                showToast('ไม่สามารถคัดลอกได้ โปรดลองอีกครั้ง');
+            }
+            window.getSelection().removeAllRanges();
+        }
+
+        function showToast(msg) {
+            toastMsg.innerText = msg;
+            toastMsg.classList.remove('hidden');
+            setTimeout(() => {
+                toastMsg.classList.add('hidden');
+            }, 3500);
+        }
+
+        // Event Listeners
+        btnExtract.addEventListener('click', () => parseLogisticsText(rawText.value));
+        
+        btnSample.addEventListener('click', () => {
+            rawText.value = SAMPLE_TEXT;
+            parseLogisticsText(SAMPLE_TEXT);
+        });
+
+        btnClear.addEventListener('click', () => {
+            rawText.value = '';
+            outDate.value = '';
+            outTracking.value = '';
+            outName.value = '';
+            outPhone.value = '';
+            outAddr.value = '';
+            outZip.value = '';
+            outNote.value = '';
+            updateLivePreview();
+        });
+
+        btnAutoDate.addEventListener('click', () => {
+            outDate.value = getNextWorkday();
+            updateLivePreview();
+        });
+
+        btnExportExcel.addEventListener('click', exportToExcel);
+        btnCopyTable.addEventListener('click', copyPreviewTable);
+
+        // Inputs Live Binding
+        [outDate, outTracking, outName, outPhone, outAddr, outZip, outNote,
+         cfgEKP, cfgPickupNo, cfgCompName, cfgCompAddr, cfgCompZip, cfgCompPhone].forEach(el => {
+            el.addEventListener('input', updateLivePreview);
+        });
+
+        // Initialize with Sample Data
+        window.onload = function() {
+            rawText.value = SAMPLE_TEXT;
+            parseLogisticsText(SAMPLE_TEXT);
+        };
+    </script>
+</body>
+</html>
