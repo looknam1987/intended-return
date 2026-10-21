@@ -57,4 +57,324 @@
       background-color: var(--primary);
       color: white;
       border: none;
-      padding: 10px 1
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+      font-size: 1rem;
+    }
+    .btn:hover { background-color: var(--primary-dark); }
+    .btn-summary { background-color: #2563eb; }
+    .btn-summary:hover { background-color: #1d4ed8; }
+    .field-group {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .field-group label {
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+    .field-group input {
+      padding: 6px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Input Section -->
+  <div class="card">
+    <h2>1. วางข้อความดิบ (Raw Text)</h2>
+    <textarea id="rawInput" placeholder="วางข้อความดิบที่นี่..."></textarea>
+    <button class="btn" onclick="parseText()">⚡ แปลงข้อมูล (Parse Data)</button>
+  </div>
+
+  <!-- Parsed Result & Export Section -->
+  <div class="card">
+    <h2>2. ตรวจสอบข้อมูล & Export</h2>
+    <div id="parsedFields">
+      <div class="field-group"><label>REF:</label><input type="text" id="ref"></div>
+      <div class="field-group"><label>Tracking เดิม:</label><input type="text" id="oldTracking"></div>
+      <div class="field-group"><label>Tracking ใหม่:</label><input type="text" id="newTracking"></div>
+      <div class="field-group"><label>ชื่อลูกค้า:</label><input type="text" id="custName"></div>
+      <div class="field-group"><label>เบอร์โทร:</label><input type="text" id="phone"></div>
+      <div class="field-group"><label>ที่อยู่:</label><input type="text" id="address"></div>
+      <div class="field-group"><label>อำเภอ:</label><input type="text" id="amphoe"></div>
+      <div class="field-group"><label>จังหวัด:</label><input type="text" id="province"></div>
+      <div class="field-group"><label>รหัสไปรษณีย์:</label><input type="text" id="postcode"></div>
+      <div class="field-group"><label>สินค้า:</label><input type="text" id="item"></div>
+      <div class="field-group"><label>จำนวน (QTY):</label><input type="text" id="qty"></div>
+      <div class="field-group"><label>CLIENT/CC:</label><input type="text" id="clientCode"></div>
+    </div>
+
+    <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e5e7eb;">
+    
+    <button class="btn" onclick="exportFormMail()">📄 1. โหลด Excel ฟอร์มส่งเมล (มีสี/ตาราง)</button>
+    <button class="btn btn-summary" onclick="exportSummary()">📊 2. โหลด Excel ไฟล์ Summary (30 คอลัมน์)</button>
+  </div>
+</div>
+
+<script>
+  function parseText() {
+    const raw = document.getElementById('rawInput').value;
+    
+    const refMatch = raw.match(/REF:\s*([^\n]+)/i);
+    const trackingMatch = raw.match(/Tracking:\s*([^\n]+)/i);
+    const nameMatch = raw.match(/ชื่อ:\s*([^\n]+)/i);
+    const phoneMatch = raw.match(/โทร:\s*([^\n]+)/i);
+    const addrMatch = raw.match(/ที่อยู่:\s*([^\n]+)/i);
+    const itemMatch = raw.match(/สินค้า:\s*([^\n]+)/i);
+
+    let ref = refMatch ? refMatch[1].trim() : '';
+    let oldTrack = trackingMatch ? trackingMatch[1].trim() : '';
+    let newTrack = oldTrack ? `THFHQ${oldTrack}RT` : '';
+    let name = nameMatch ? nameMatch[1].trim().replace(/^'/, '') : '';
+    let rawPhone = phoneMatch ? phoneMatch[1].trim() : '';
+    let phone = rawPhone.startsWith('66') ? '0' + rawPhone.slice(2) : rawPhone;
+    let addr = addrMatch ? addrMatch[1].trim().replace(/^'/, '') : '';
+    let itemFull = itemMatch ? itemMatch[1].trim() : '';
+
+    let clientCode = itemFull.substring(0, 3).toUpperCase();
+    let qtyMatch = itemFull.match(/(\d+)\s*(BOX|ชิ้น|กล่อง)/i) || itemFull.match(/\b(\d+)\b/);
+    let qty = qtyMatch ? qtyMatch[1] : '1';
+    let itemNo = itemFull.split(/\s+/)[0];
+
+    let postMatch = addr.match(/\b\d{5}\b/);
+    let postcode = postMatch ? postMatch[0] : '';
+
+    let province = '';
+    let amphoe = '';
+    
+    if (addr.includes('กรุงเทพ') || addr.includes('กทม')) {
+      province = 'กรุงเทพมหานคร';
+      let bkkAmphoe = addr.match(/(เขต[^\s]+|แขวง[^\s]+)/);
+      amphoe = bkkAmphoe ? bkkAmphoe[0] : 'กรุงเทพมหานคร';
+    } else {
+      let provMatch = addr.match(/(จังหวัด[^\s]+|\s[ก-ฮ]{2,}[บุรี|ธานี|นคร|กาฬสินธุ์|พนม|แพร่|น่าน|ยะลา|ตรัง|ระยอง|ปทุมธานี]+)/);
+      province = provMatch ? provMatch[0].replace('จังหวัด', '').trim() : '';
+      let ampMatch = addr.match(/(อำเภอ[^\s]+|อ\.[^\s]+)/);
+      amphoe = ampMatch ? ampMatch[0] : '';
+    }
+
+    document.getElementById('ref').value = ref;
+    document.getElementById('oldTracking').value = oldTrack;
+    document.getElementById('newTracking').value = newTrack;
+    document.getElementById('custName').value = name;
+    document.getElementById('phone').value = phone;
+    document.getElementById('address').value = addr;
+    document.getElementById('amphoe').value = amphoe;
+    document.getElementById('province').value = province;
+    document.getElementById('postcode').value = postcode;
+    document.getElementById('item').value = itemNo;
+    document.getElementById('qty').value = qty;
+    document.getElementById('clientCode').value = clientCode;
+  }
+
+  function getFormattedDate() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function sanitizeFilename(str) {
+    return (str || 'Customer').replace(/[\\/*?:"<>|]/g, '').trim();
+  }
+
+  async function exportFormMail() {
+    if (typeof ExcelJS === 'undefined') {
+      alert('ระบบกำลังโหลดไลบรารี Excel กรุณารอ 2-3 วินาทีแล้วลองอีกครั้งครับ');
+      return;
+    }
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Sheet1');
+
+    sheet.addRow(['Intended Return (Pickup)']);
+    sheet.addRow(['EKP no. :  5280551024']);
+    sheet.addRow(['Pick up no. : 0005376582']);
+    sheet.addRow([]);
+
+    sheet.addRow([
+      'วันที่เข้ารับ', 
+      'Shipment ID\n(Tracking Number ใหม่)\n**แจ้งเลขสำหรับติดตามสถานะของที่ต้องการให้ไปรับกลับ**เติม RT ด้านหลัง',
+      'รายละเอียดที่อยู่สำหรับเข้ารับสินค้า', '', '', '', '',
+      'รายละเอียดสำหรับที่อยู่นำส่ง', '', '', '',
+      'รายละเอียดสำหรับที่อยู่ส่งคืน', '', '', ''
+    ]);
+
+    sheet.addRow([
+      '', '', 
+      'ชื่อ', 'ที่อยู่', 'รหัสไปรษณีย์', 'เบอร์โทรศัพท์', 'หมายเหตุเพิ่มเติม',
+      'ชื่อ', 'ที่อยู่', 'รหัสไปรษณีย์', 'เบอร์โทรศัพท์',
+      'ชื่อ', 'ที่อยู่', 'รหัสไปรษณีย์', 'เบอร์โทรศัพท์'
+    ]);
+
+    sheet.mergeCells('A5:A6');
+    sheet.mergeCells('B5:B6');
+    sheet.mergeCells('C5:G5');
+    sheet.mergeCells('H5:K5');
+    sheet.mergeCells('L5:O5');
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateStr = tomorrow.toLocaleDateString('en-US');
+
+    sheet.addRow([
+      dateStr,
+      document.getElementById('newTracking').value,
+      document.getElementById('custName').value,
+      document.getElementById('address').value,
+      document.getElementById('postcode').value,
+      document.getElementById('phone').value,
+      '',
+      'Smart One Logistics',
+      'อาคารอโยธยา ทาวเวอร์ ชั้น19  240/37 ถนนรัชดาภิเษก เเขวงห้วยขวาง เขตห้วยขวาง กรุงเทพมหานคร',
+      '10310', '0908903055',
+      'Smart One Logistics',
+      'อาคารอโยธยา ทาวเวอร์ ชั้น19  240/37 ถนนรัชดาภิเษก เเขวงห้วยขวาง เขตห้วยขวาง กรุงเทพมหานคร',
+      '10310', '0908903055'
+    ]);
+
+    const borderStyle = {
+      top: { style: 'thin', color: { argb: 'D3D3D3' } },
+      left: { style: 'thin', color: { argb: 'D3D3D3' } },
+      bottom: { style: 'thin', color: { argb: 'D3D3D3' } },
+      right: { style: 'thin', color: { argb: 'D3D3D3' } }
+    };
+
+    const fillGroupPickup = { type: 'pattern', pattern: 'solid', fgColor: { argb: '107C41' } };
+    const fillGroupDelivery = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1F4E78' } };
+    const fillGroupReturn = { type: 'pattern', pattern: 'solid', fgColor: { argb: '595959' } };
+
+    for (let col = 1; col <= 15; col++) {
+      for (let row = 5; row <= 7; row++) {
+        const cell = sheet.getCell(row, col);
+        cell.border = borderStyle;
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      }
+    }
+
+    for (let c = 1; c <= 2; c++) {
+      sheet.getCell(5, c).fill = fillGroupPickup;
+      sheet.getCell(5, c).font = { color: { argb: 'FFFFFF' }, bold: true };
+    }
+    for (let c = 3; c <= 7; c++) {
+      sheet.getCell(5, c).fill = fillGroupPickup;
+      sheet.getCell(5, c).font = { color: { argb: 'FFFFFF' }, bold: true };
+      sheet.getCell(6, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2EFDA' } };
+      sheet.getCell(6, c).font = { bold: true };
+    }
+    for (let c = 8; c <= 11; c++) {
+      sheet.getCell(5, c).fill = fillGroupDelivery;
+      sheet.getCell(5, c).font = { color: { argb: 'FFFFFF' }, bold: true };
+      sheet.getCell(6, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'DDEBF7' } };
+      sheet.getCell(6, c).font = { bold: true };
+    }
+    for (let c = 12; c <= 15; c++) {
+      sheet.getCell(5, c).fill = fillGroupReturn;
+      sheet.getCell(5, c).font = { color: { argb: 'FFFFFF' }, bold: true };
+      sheet.getCell(6, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F2F2' } };
+      sheet.getCell(6, c).font = { bold: true };
+    }
+
+    sheet.columns = [
+      { width: 14 }, { width: 28 }, { width: 22 }, { width: 35 }, { width: 12 },
+      { width: 15 }, { width: 15 }, { width: 20 }, { width: 35 }, { width: 12 },
+      { width: 15 }, { width: 20 }, { width: 35 }, { width: 12 }, { width: 15 }
+    ];
+
+    const custName = sanitizeFilename(document.getElementById('custName').value);
+    const dateExport = getFormattedDate();
+    const filename = `${custName}_IntendedReturn_${dateExport}.xlsx`;
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+  }
+
+  async function exportSummary() {
+    if (typeof ExcelJS === 'undefined') {
+      alert('ระบบกำลังโหลดไลบรารี Excel กรุณารอ 2-3 วินาทีแล้วลองอีกครั้งครับ');
+      return;
+    }
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Sheet1');
+
+    const headers = [
+      'CLIENT', 'SO_NO', 'LINE_NO', 'CUSTOMER CODE', 'SO_TYPE', 'ORDER NO.', 'DATE',
+      'REFERENCE_NO', 'Remarks', 'ITEM_NO', 'QTY', 'UOM', 'CUSTOMER_NAME', 'CONTACT_PERSON',
+      'ที่อยู่', 'ซอย', 'ถนน', 'ตำบล', 'อำเภอ', 'จังหวัด', 'COUNTRY', 'POST', 'PHONE',
+      'Whse_source', 'WI_SQLSTATUS', 'WI_SQLMSG', 'CC', 'วันที่ลูกค้าส่งไฟล์มา', 'mail to DHL', 'Delivery Tracking'
+    ];
+    sheet.addRow(headers);
+
+    const todayStr = getFormattedDate();
+
+    const rowData = [
+      document.getElementById('clientCode').value,
+      '', 1, '', '', '', '',
+      document.getElementById('ref').value,
+      '',
+      document.getElementById('item').value,
+      parseInt(document.getElementById('qty').value) || 1,
+      '',
+      document.getElementById('custName').value,
+      '', '', '', '', '',
+      document.getElementById('amphoe').value,
+      document.getElementById('province').value,
+      '',
+      document.getElementById('postcode').value,
+      '', '', '', '',
+      document.getElementById('clientCode').value,
+      '',
+      todayStr,
+      document.getElementById('newTracking').value
+    ];
+
+    sheet.addRow(rowData);
+
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '366092' } };
+    
+    for (let col = 1; col <= 30; col++) {
+      sheet.getCell(1, col).border = {
+        top: { style: 'thin', color: { argb: 'BFBFBF' } },
+        left: { style: 'thin', color: { argb: 'BFBFBF' } },
+        bottom: { style: 'thin', color: { argb: 'BFBFBF' } },
+        right: { style: 'thin', color: { argb: 'BFBFBF' } }
+      };
+      sheet.getCell(2, col).border = {
+        top: { style: 'thin', color: { argb: 'BFBFBF' } },
+        left: { style: 'thin', color: { argb: 'BFBFBF' } },
+        bottom: { style: 'thin', color: { argb: 'BFBFBF' } },
+        right: { style: 'thin', color: { argb: 'BFBFBF' } }
+      };
+    }
+
+    const custName = sanitizeFilename(document.getElementById('custName').value);
+    const filename = `Summary_DHL_${custName}_${todayStr}.xlsx`;
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+  }
+</script>
+
+</body>
+</html>
