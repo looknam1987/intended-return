@@ -117,7 +117,7 @@
 
     <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e5e7eb;">
     
-    <button class="btn" onclick="exportFormMail()">📄 1. โหลด Excel ฟอร์มส่งเมล (มีสี/ตาราง)</button>
+    <button class="btn" onclick="exportFormMail()">📄 1. โหลด Excel ฟอร์มส่งเมล (ฟอร์มสวย)</button>
     <button class="btn btn-summary" onclick="exportSummary()">📊 2. โหลด Excel ไฟล์ Summary (30 คอลัมน์)</button>
   </div>
 </div>
@@ -190,6 +190,7 @@
     return (str || 'Customer').replace(/[\\/*?:"<>|]/g, '').trim();
   }
 
+  // 1. Export Form S1 (ปรับแต่งรูปแบบตามภาพที่ 2)
   async function exportFormMail() {
     if (typeof ExcelJS === 'undefined') {
       alert('ระบบกำลังโหลดไลบรารี Excel กรุณารอ 2-3 วินาทีแล้วลองอีกครั้งครับ');
@@ -198,14 +199,41 @@
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Sheet1');
 
-    sheet.addRow(['Intended Return (Pickup)']);
-    sheet.addRow(['EKP no. :  5280551024']);
-    sheet.addRow(['Pick up no. : 0005376582']);
+    // Enable Gridlines
+    sheet.views = [{ showGridLines: true }];
+
+    // Row 1 - 3: Headers with Background Color & Borders
+    sheet.addRow(['Intended Return (Pickup)', '']);
+    sheet.addRow(['EKP no. :  5280551024', '']);
+    sheet.addRow(['Pick up no. : 0005376582', '']);
     sheet.addRow([]);
 
+    sheet.mergeCells('A1:B1');
+    sheet.mergeCells('A2:B2');
+    sheet.mergeCells('A3:B3');
+
+    // Style Rows 1-3
+    const headerBorder = {
+      top: { style: 'thin', color: { argb: '7F7F7F' } },
+      left: { style: 'thin', color: { argb: '7F7F7F' } },
+      bottom: { style: 'thin', color: { argb: '7F7F7F' } },
+      right: { style: 'thin', color: { argb: '7F7F7F' } }
+    };
+
+    sheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'DDEBF7' } }; // Soft Blue
+    sheet.getCell('A1').font = { bold: true, size: 12 };
+    sheet.getCell('A1').border = headerBorder;
+
+    sheet.getCell('A2').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FCE4D6' } }; // Soft Orange
+    sheet.getCell('A2').border = headerBorder;
+
+    sheet.getCell('A3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FCE4D6' } }; // Soft Orange
+    sheet.getCell('A3').border = headerBorder;
+
+    // Row 5 & 6: Table Headers
     sheet.addRow([
       'วันที่เข้ารับ', 
-      'Shipment ID\n(Tracking Number ใหม่)\n**แจ้งเลขสำหรับติดตามสถานะของที่ต้องการให้ไปรับกลับ**เติม RT ด้านหลัง',
+      'Shipment ID\n(Tracking Number ใหม่)',
       'รายละเอียดที่อยู่สำหรับเข้ารับสินค้า', '', '', '', '',
       'รายละเอียดสำหรับที่อยู่นำส่ง', '', '', '',
       'รายละเอียดสำหรับที่อยู่ส่งคืน', '', '', ''
@@ -228,6 +256,7 @@
     tomorrow.setDate(tomorrow.getDate() + 1);
     const dateStr = tomorrow.toLocaleDateString('en-US');
 
+    // Data Row (Row 7)
     sheet.addRow([
       dateStr,
       document.getElementById('newTracking').value,
@@ -244,52 +273,42 @@
       '10310', '0908903055'
     ]);
 
-    const borderStyle = {
-      top: { style: 'thin', color: { argb: 'D3D3D3' } },
-      left: { style: 'thin', color: { argb: 'D3D3D3' } },
-      bottom: { style: 'thin', color: { argb: 'D3D3D3' } },
-      right: { style: 'thin', color: { argb: 'D3D3D3' } }
+    // Border & Fills (Soft Green Theme for Pickup like Image 2)
+    const tableBorder = {
+      top: { style: 'thin', color: { argb: '595959' } },
+      left: { style: 'thin', color: { argb: '595959' } },
+      bottom: { style: 'thin', color: { argb: '595959' } },
+      right: { style: 'thin', color: { argb: '595959' } }
     };
 
-    const fillGroupPickup = { type: 'pattern', pattern: 'solid', fgColor: { argb: '107C41' } };
-    const fillGroupDelivery = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1F4E78' } };
-    const fillGroupReturn = { type: 'pattern', pattern: 'solid', fgColor: { argb: '595959' } };
+    const fillPastelGreenHeader = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'C6EFCE' } }; // Soft Pastel Green
 
     for (let col = 1; col <= 15; col++) {
       for (let row = 5; row <= 7; row++) {
         const cell = sheet.getCell(row, col);
-        cell.border = borderStyle;
+        cell.border = tableBorder;
         cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
       }
     }
 
-    for (let c = 1; c <= 2; c++) {
-      sheet.getCell(5, c).fill = fillGroupPickup;
-      sheet.getCell(5, c).font = { color: { argb: 'FFFFFF' }, bold: true };
-    }
-    for (let c = 3; c <= 7; c++) {
-      sheet.getCell(5, c).fill = fillGroupPickup;
-      sheet.getCell(5, c).font = { color: { argb: 'FFFFFF' }, bold: true };
-      sheet.getCell(6, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2EFDA' } };
-      sheet.getCell(6, c).font = { bold: true };
-    }
-    for (let c = 8; c <= 11; c++) {
-      sheet.getCell(5, c).fill = fillGroupDelivery;
-      sheet.getCell(5, c).font = { color: { argb: 'FFFFFF' }, bold: true };
-      sheet.getCell(6, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'DDEBF7' } };
-      sheet.getCell(6, c).font = { bold: true };
-    }
-    for (let c = 12; c <= 15; c++) {
-      sheet.getCell(5, c).fill = fillGroupReturn;
-      sheet.getCell(5, c).font = { color: { argb: 'FFFFFF' }, bold: true };
-      sheet.getCell(6, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F2F2' } };
-      sheet.getCell(6, c).font = { bold: true };
+    // Apply Soft Green Header Style
+    for (let col = 1; col <= 15; col++) {
+      sheet.getCell(5, col).fill = fillPastelGreenHeader;
+      sheet.getCell(5, col).font = { bold: true, color: { argb: '006100' } };
+      sheet.getCell(6, col).fill = fillPastelGreenHeader;
+      sheet.getCell(6, col).font = { bold: true, color: { argb: '006100' } };
     }
 
+    // Alignment for Data (Row 7)
+    sheet.getCell('C7').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+    sheet.getCell('D7').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+    sheet.getCell('I7').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+    sheet.getCell('N7').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+
     sheet.columns = [
-      { width: 14 }, { width: 28 }, { width: 22 }, { width: 35 }, { width: 12 },
-      { width: 15 }, { width: 15 }, { width: 20 }, { width: 35 }, { width: 12 },
-      { width: 15 }, { width: 20 }, { width: 35 }, { width: 12 }, { width: 15 }
+      { width: 15 }, { width: 30 }, { width: 25 }, { width: 45 }, { width: 14 },
+      { width: 16 }, { width: 16 }, { width: 22 }, { width: 45 }, { width: 14 },
+      { width: 16 }, { width: 22 }, { width: 45 }, { width: 14 }, { width: 16 }
     ];
 
     const custName = sanitizeFilename(document.getElementById('custName').value);
@@ -304,6 +323,7 @@
     link.click();
   }
 
+  // 2. Export Summary File (30 Columns)
   async function exportSummary() {
     if (typeof ExcelJS === 'undefined') {
       alert('ระบบกำลังโหลดไลบรารี Excel กรุณารอ 2-3 วินาทีแล้วลองอีกครั้งครับ');
@@ -311,6 +331,8 @@
     }
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Sheet1');
+
+    sheet.views = [{ showGridLines: true }];
 
     const headers = [
       'CLIENT', 'SO_NO', 'LINE_NO', 'CUSTOMER CODE', 'SO_TYPE', 'ORDER NO.', 'DATE',
