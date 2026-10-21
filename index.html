@@ -117,7 +117,7 @@
 
     <hr style="margin: 15px 0; border: 0; border-top: 1px solid #e5e7eb;">
     
-    <button class="btn" onclick="exportFormMail()">📄 1. โหลด Excel ฟอร์มส่งเมล (ฟอร์มสวย)</button>
+    <button class="btn" onclick="exportFormMail()">📄 1. โหลด Excel ฟอร์มส่งเมล (ตารางตีกรอบสีดำ)</button>
     <button class="btn btn-summary" onclick="exportSummary()">📊 2. โหลด Excel ไฟล์ Summary (30 คอลัมน์)</button>
   </div>
 </div>
@@ -190,7 +190,7 @@
     return (str || 'Customer').replace(/[\\/*?:"<>|]/g, '').trim();
   }
 
-  // 1. Export Form S1 (ปรับแต่งรูปแบบตามภาพที่ 2)
+  // 1. Export Form S1 (บังคับตีเส้นขอบตารางสีดำรอบทุกช่อง)
   async function exportFormMail() {
     if (typeof ExcelJS === 'undefined') {
       alert('ระบบกำลังโหลดไลบรารี Excel กรุณารอ 2-3 วินาทีแล้วลองอีกครั้งครับ');
@@ -199,10 +199,9 @@
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Sheet1');
 
-    // Enable Gridlines
     sheet.views = [{ showGridLines: true }];
 
-    // Row 1 - 3: Headers with Background Color & Borders
+    // Row 1 - 3
     sheet.addRow(['Intended Return (Pickup)', '']);
     sheet.addRow(['EKP no. :  5280551024', '']);
     sheet.addRow(['Pick up no. : 0005376582', '']);
@@ -212,25 +211,7 @@
     sheet.mergeCells('A2:B2');
     sheet.mergeCells('A3:B3');
 
-    // Style Rows 1-3
-    const headerBorder = {
-      top: { style: 'thin', color: { argb: '7F7F7F' } },
-      left: { style: 'thin', color: { argb: '7F7F7F' } },
-      bottom: { style: 'thin', color: { argb: '7F7F7F' } },
-      right: { style: 'thin', color: { argb: '7F7F7F' } }
-    };
-
-    sheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'DDEBF7' } }; // Soft Blue
-    sheet.getCell('A1').font = { bold: true, size: 12 };
-    sheet.getCell('A1').border = headerBorder;
-
-    sheet.getCell('A2').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FCE4D6' } }; // Soft Orange
-    sheet.getCell('A2').border = headerBorder;
-
-    sheet.getCell('A3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FCE4D6' } }; // Soft Orange
-    sheet.getCell('A3').border = headerBorder;
-
-    // Row 5 & 6: Table Headers
+    // Row 5 & 6 Header
     sheet.addRow([
       'วันที่เข้ารับ', 
       'Shipment ID\n(Tracking Number ใหม่)',
@@ -256,7 +237,7 @@
     tomorrow.setDate(tomorrow.getDate() + 1);
     const dateStr = tomorrow.toLocaleDateString('en-US');
 
-    // Data Row (Row 7)
+    // Row 7 Data
     sheet.addRow([
       dateStr,
       document.getElementById('newTracking').value,
@@ -273,33 +254,42 @@
       '10310', '0908903055'
     ]);
 
-    // Border & Fills (Soft Green Theme for Pickup like Image 2)
-    const tableBorder = {
-      top: { style: 'thin', color: { argb: '595959' } },
-      left: { style: 'thin', color: { argb: '595959' } },
-      bottom: { style: 'thin', color: { argb: '595959' } },
-      right: { style: 'thin', color: { argb: '595959' } }
+    // Define Black Thin Border
+    const blackBorder = {
+      top: { style: 'thin', color: { argb: '000000' } },
+      left: { style: 'thin', color: { argb: '000000' } },
+      bottom: { style: 'thin', color: { argb: '000000' } },
+      right: { style: 'thin', color: { argb: '000000' } }
     };
 
-    const fillPastelGreenHeader = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'C6EFCE' } }; // Soft Pastel Green
+    // Apply Black Borders to Row 1-3
+    for (let r = 1; r <= 3; r++) {
+      for (let c = 1; c <= 2; c++) {
+        sheet.getCell(r, c).border = blackBorder;
+      }
+    }
+
+    sheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'DDEBF7' } };
+    sheet.getCell('A1').font = { bold: true, size: 11 };
+    sheet.getCell('A2').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FCE4D6' } };
+    sheet.getCell('A3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FCE4D6' } };
+
+    // Apply Black Borders & Alignment to Row 5, 6, 7 (All 15 Columns)
+    const fillGreenHeader = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'C6EFCE' } };
 
     for (let col = 1; col <= 15; col++) {
       for (let row = 5; row <= 7; row++) {
         const cell = sheet.getCell(row, col);
-        cell.border = tableBorder;
+        cell.border = blackBorder; // บังคับใส่เส้นขอบสีดำเด่นชัด
         cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
       }
-    }
-
-    // Apply Soft Green Header Style
-    for (let col = 1; col <= 15; col++) {
-      sheet.getCell(5, col).fill = fillPastelGreenHeader;
+      sheet.getCell(5, col).fill = fillGreenHeader;
       sheet.getCell(5, col).font = { bold: true, color: { argb: '006100' } };
-      sheet.getCell(6, col).fill = fillPastelGreenHeader;
+      sheet.getCell(6, col).fill = fillGreenHeader;
       sheet.getCell(6, col).font = { bold: true, color: { argb: '006100' } };
     }
 
-    // Alignment for Data (Row 7)
+    // Align Data Cells
     sheet.getCell('C7').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
     sheet.getCell('D7').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
     sheet.getCell('I7').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
@@ -323,7 +313,7 @@
     link.click();
   }
 
-  // 2. Export Summary File (30 Columns)
+  // 2. Export Summary File
   async function exportSummary() {
     if (typeof ExcelJS === 'undefined') {
       alert('ระบบกำลังโหลดไลบรารี Excel กรุณารอ 2-3 วินาทีแล้วลองอีกครั้งครับ');
@@ -373,16 +363,16 @@
     
     for (let col = 1; col <= 30; col++) {
       sheet.getCell(1, col).border = {
-        top: { style: 'thin', color: { argb: 'BFBFBF' } },
-        left: { style: 'thin', color: { argb: 'BFBFBF' } },
-        bottom: { style: 'thin', color: { argb: 'BFBFBF' } },
-        right: { style: 'thin', color: { argb: 'BFBFBF' } }
+        top: { style: 'thin', color: { argb: '000000' } },
+        left: { style: 'thin', color: { argb: '000000' } },
+        bottom: { style: 'thin', color: { argb: '000000' } },
+        right: { style: 'thin', color: { argb: '000000' } }
       };
       sheet.getCell(2, col).border = {
-        top: { style: 'thin', color: { argb: 'BFBFBF' } },
-        left: { style: 'thin', color: { argb: 'BFBFBF' } },
-        bottom: { style: 'thin', color: { argb: 'BFBFBF' } },
-        right: { style: 'thin', color: { argb: 'BFBFBF' } }
+        top: { style: 'thin', color: { argb: '000000' } },
+        left: { style: 'thin', color: { argb: '000000' } },
+        bottom: { style: 'thin', color: { argb: '000000' } },
+        right: { style: 'thin', color: { argb: '000000' } }
       };
     }
 
